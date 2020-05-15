@@ -2,4 +2,4 @@
 
 ### 1. UNET
 
-### 2. VGG 19 encoder model with custom UNET decoder model
+### 2. VGG 19 encoder block with custom UNET decoder block
