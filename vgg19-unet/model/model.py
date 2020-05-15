@@ -103,32 +103,31 @@ def get_model(in_shape, out_classes, dropout_rate=0.2, noise=1, activation='relu
     base_out = vgg19.output
     concat_layers = ['block5_conv4', 'block4_conv4', 'block3_conv4', 'block2_conv2', 'block1_conv2']
     concat_tensors = [vgg19.get_layer(layer).output for layer in concat_layers]
-    print(concat_tensors)
 
     decoder0 = decoder_block(
-        base_out, nFilters=1028, nConvs=3, i=0,
+        base_out, n_filters=1028, n_convs=3, i=0,
         rate=dropout_rate, noise=noise, activation=activation
     )  # 64
     decoder1 = decoder_block(
-        decoder0, concat_tensor=concat_tensors[0], nFilters=512, nConvs=3, i=2,
+        decoder0, concat_tensor=concat_tensors[0], n_filters=512, n_convs=3, i=2,
         rate=dropout_rate, noise=noise, activation=activation
     )
     decoder2 = decoder_block(
-        decoder1, concat_tensor=concat_tensors[1], nFilters=512, nConvs=3, i=3,
+        decoder1, concat_tensor=concat_tensors[1], n_filters=512, n_convs=3, i=3,
         rate=dropout_rate, noise=noise, activation=activation
     )
     decoder3 = decoder_block(
-        decoder2, concat_tensor=concat_tensors[2], nFilters=256, nConvs=2, i=4,
+        decoder2, concat_tensor=concat_tensors[2], n_filters=256, n_convs=2, i=4,
         rate=dropout_rate, noise=noise, activation=activation
     )
     decoder4 = decoder_block(
-        decoder3, concat_tensor=concat_tensors[3], nFilters=128, nConvs=2, i=5,
+        decoder3, concat_tensor=concat_tensors[3], n_filters=128, n_convs=2, i=5,
         rate=dropout_rate, noise=noise, activation=activation
     )
 
     out_branch = conv_layer(64, (3, 3), name=f'out_block_conv1')(decoder4)
     out_branch = layers.BatchNormalization(name=f'out_block_batchnorm1')(out_branch)
-    out_branch = layers.Activation(activation, name='out_block_activation1"')(out_branch)
+    out_branch = layers.Activation(activation, name='out_block_activation1')(out_branch)
     if combo == 'add':
         out_branch = layers.add([out_branch, concat_tensors[4]], name='out_block_residual')
     elif combo == 'concat':
@@ -171,18 +170,10 @@ def build(*args, optimizer=None, loss=None, metrics=None, distributed_strategy=N
     if distributed_strategy is not None:
         with distributed_strategy.scope():
             model = get_model(*args, **kwargs)
-
-            model.compile(optimizer=optimizer,
-                          loss=loss,
-                          metrics=metrics
-                          )
+            model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
     else:
         model = get_model(*args, **kwargs)
-
-        model.compile(optimizer=optimizer,
-                      loss=loss,
-                      metrics=metrics
-                      )
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
     return model

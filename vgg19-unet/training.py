@@ -5,6 +5,8 @@ import numpy as np
 from pathlib import Path
 import sh
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import callbacks
 from model import dataio, model
 
 
@@ -14,6 +16,10 @@ DATADIR = BASEDIR / 'data'
 TRAINING_DIR = BASEDIR / 'training'
 TESTING_DIR = BASEDIR / 'testing'
 VALIDATION_DIR = BASEDIR / 'validation'
+MODEL_SAVE_DIR = BASEDIR / 'attempt1'
+MODEL_NAME = 'vgg16unet_model.h5'
+
+sh.mkdir(MODEL_SAVE_DIR)
 
 # specify some data structure
 FEATURES = ['VH', 'VV']
@@ -80,25 +86,43 @@ in_shape = PATCH_SHAPE + (len(FEATURES),)
 out_classes = len(LABELS)
 
 # build the model and compile
-myModel = model.build(in_shape, out_classes, distributed_strategy=strategy)
+my_model = model.build(in_shape, out_classes, distributed_strategy=strategy)
 
 # define callbacks during training
-modelCheckpnt = callbacks.ModelCheckpoint(
-    'bestModelWeights.h5', monitor='val_loss', save_best_only=True, mode='min', verbose=1, save_weights_only=True)
-earlyStop = keras.callbacks.EarlyStopping(
-    monitor='val_loss', patience=5, verbose=0, mode='auto', restore_best_weights=True)
+model_checkpoint = callbacks.ModelCheckpoint(
+    'bestModelWeights.h5', monitor='val_loss', save_best_only=True,
+    mode='min', verbose=1, save_weights_only=True
+)
+early_stopping = keras.callbacks.EarlyStopping(
+    monitor='val_loss', patience=5, verbose=0,
+    mode='auto', restore_best_weights=True
+)
 tensorboard = callbacks.TensorBoard(log_dir='./logs', write_images=True)
 
 # fit the model
-history = myModel.fit(
+history = my_model.fit(
     x=training,
     epochs=EPOCHS,
     steps_per_epoch=(TRAIN_SIZE // BATCH_SIZE),
     validation_data=testing,
     validation_steps=TEST_SIZE,
-    callbacks=[modelCheckpnt, tensorboard, earlyStop],
+    callbacks=[model_checkpoint, tensorboard, early_stopping],
 )
 
 # check how the model trained
-myModel.evaluate(eval)
+my_model.evaluate(eval)
 
+# save the parameters
+with open(f'{str(MODEL_SAVE_DIR)}/parameters.txt', 'w') as f:
+    f.write(f'TRAIN_SIZE: {TRAIN_SIZE}\n')
+    f.write(f'TEST_SIZE: {TEST_SIZE}\n')
+    f.write(f'VAL_SIZE: {VAL_SIZE}\n')
+    f.write(f'BATCH_SIZE: {BATCH_SIZE}\n')
+    f.write(f'EPOCHS: {EPOCHS}\n')
+    f.write(f'BUFFER_SIZE: {BUFFER_SIZE}\n')
+    f.write(f'FEATURES: {FEATURES}\n')
+    f.write(f'LABELS: {LABELS}\n')
+    f.write(f'PATCH_SHAPE: {PATCH_SHAPE}\n')
+
+# save the model
+my_model.save(f'{str(MODEL_SAVE_DIR)}/{MODEL_NAME}')
